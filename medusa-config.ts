@@ -15,12 +15,15 @@ module.exports = defineConfig({
   },
   
   modules: [
-	// {
-	  // resolve: "@medusajs/medusa/event-bus-redis",
-		  // options: { 
-			// redisUrl: process.env.REDIS_URL,
-		// },
-	// },
+	{
+	  resolve:  "@medusajs/medusa/event-bus-redis",
+		  options: { 
+			redisUrl: process.env.REDIS_URL,
+		},
+	},
+	/*******************************************
+	Commented out until we are ready!
+	*******************************************/
     // {
       // resolve: "./src/modules/marketplace",
     // },
@@ -39,6 +42,7 @@ module.exports = defineConfig({
         // },
       // },
     // },
+	/*****************************************/
     {
       resolve: "@medusajs/medusa/payment",
       options: {
@@ -53,7 +57,7 @@ module.exports = defineConfig({
           {
             resolve: "medusa-payment-paystack",
             options: {
-              secret_key: process.env.PAYSTACK_SECRET_KEY,
+              secret_key: process.env.PAYSTACK_SECRET_KEY || "supersecret",
             } satisfies import("medusa-payment-paystack").PluginOptions,
           },
        ],
