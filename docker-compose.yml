@@ -1,0 +1,60 @@
+################################################################
+# Assumes that the medusa project folder is: ./
+#   containing the required files 1) Dockerfile and 2) .env.docker
+
+services:
+    postgres:
+        image: postgres:${POSTGRES_VERSION:-15.3-alpine}
+        container_name: ${PROJECT_NAME:-mesera}-db-postgres
+        environment:
+          POSTGRES_DB: ${POSTGRES_DB:-mesera}
+          POSTGRES_USER: ${POSTGRES_USER:-mesera}
+          #Replace supersecret with actual db password
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret}
+          PGDATA: '/var/lib/postgresql/data'
+          POSTGRES_INITDB_ARGS: '-E UTF8 --locale=C'
+        command: ['postgres', '-cshared_preload_libraries=pg_stat_statements']
+        ports:
+          - 5432:5432
+        volumes:
+          - ${PROJECT_NAME:-mesera}-db-data:/var/lib/postgresql/data
+        restart: unless-stopped
+        healthcheck:
+          test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
+          interval: 30s
+          timeout: 10s
+          retries: 5
+    redis:
+        image: redis
+        container_name: ${PROJECT_NAME:-mesera}-redis
+        restart: unless-stopped
+        ports:
+            - 6379:6379
+    medusa:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: ${PROJECT_NAME:-mesera}-medusa
+        depends_on:
+            - postgres
+            - redis
+        restart: unless-stopped
+        ports:
+            - 9000:9000
+        env_file:
+            - .env
+        environment:
+            - PORT=9000
+        volumes:
+            - ./.env.docker:/application/.env
+            - ./docker-bootstrap.sh:/application/docker-bootstrap.sh
+        healthcheck:
+            test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+networks:
+  default:
+    driver: bridge
+

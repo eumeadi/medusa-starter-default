@@ -1,0 +1,47 @@
+name: Copy latest to EC2
+
+on:
+  push:
+    branches: [ main ]  # Triggers on every push to main branch
+  workflow_dispatch:    # Allows manual triggering
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2.key
+        chmod 600 ~/.ssh/ec2.key
+        echo -e "Host ec2\n\tHostName ${{ secrets.EC2_HOST }}\n\tUser ${{ secrets.EC2_USERNAME }}\n\tIdentityFile ~/.ssh/ec2.key\n\tStrictHostKeyChecking no" > ~/.ssh/config
+        
+    - name: Create empty .env
+      run: |
+        # First create .env.local if it does not exist.
+        touch .env
+        cat > .env << EOL
+        # This is created empty for security reasons.
+        EOF
+        
+        echo ".env created empty"
+      
+    - name: Deploy to EC2
+      run: |
+        # Now synch files
+        rsync -avz --exclude '.git/' --exclude '.github' --exclude 'node_modules/' ./ ec2:/home/ec2-user/medusa/
+        
+    - name: Make script executable
+      run: |
+        ssh ec2 "chmod +x /home/ec2-user/medusa/docker-build-run.sh"
+        ssh ec2 "echo 'Script made executable on $(date)'"
+        
+    - name: Verify deployment
+      run: |
+        ssh ec2 "ls -la /home/ec2-user/medusa/"
+        ssh ec2 "echo 'Deployment completed on $(date)'"
+
